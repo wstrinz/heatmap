@@ -3,11 +3,11 @@
             [clojure.data.json :as json]
             [clj-time.core :as t]
             [clj-time.format :as f]
-            [clojure.string :as stri]))
+            [clojure.string :as string]))
 
 
 (def api-base "https://api.moves-app.com/api/1.1")
-(def token (stri/trim (slurp "oauth_key.txt")))
+(def token (string/trim (slurp "oauth_key.txt")))
 (def token-query-param (str "?access_token=" token))
 
 (def daily-summary-path "/user/summary/daily")
@@ -24,11 +24,13 @@
 (defn todays-storyline
   "fetch storyline from today"
   []
-  (let [ response
-         (:body (client/get (trackpoint_path (format-date (t/today-at 12 00)))))
-         ]
-    (json/read-str response :key-fn  keyword)
-    ))
+  (json/read-str
+   (->> (t/today-at 12 00)
+        (format-date)
+        (trackpoint_path)
+        (client/get)
+        (:body))
+   :key-fn keyword))
 
 
 ((defn todays-trackpoints
