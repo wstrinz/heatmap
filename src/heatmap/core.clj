@@ -3,12 +3,12 @@
             [clojure.data.json :as json]
             [clj-time.core :as t]
             [clj-time.format :as f]
-            [clojure.string :as string]))
-
+            [clojure.string :as string]
+            [clojure.pprint :as pp]))
 
 (def api-base "https://api.moves-app.com/api/1.1")
 (def token (string/trim (slurp "oauth_key.txt")))
-(def token-query-param (str "?access_token=" token))
+(def token-query-param (format "?access_token=%s" token))
 
 (def daily-summary-path "/user/summary/daily")
 (def daily-storyline-path "/user/storyline/daily")
@@ -35,15 +35,37 @@
         (:body))
    :key-fn keyword))
 
-((defn todays-trackpoints
+(defn todays-trackpoints
    "extract trackpoints from storyline"
    []
-   (->> (todays-storyline) (first)
-     (:segments)
-     (map :activities) (flatten)
-     (map :trackPoints) (flatten))))
+   (->> (todays-storyline)
+        first
+        :segments
+        (remove #(nil? (:activities %)))
+        (mapcat :activities)
+        (mapcat :trackPoints))
+        )
+
+(def thestuff
+  (map #(update-in % [:time] f/parse) (todays-trackpoints)))
+
+(defn coords
+  [{:keys [lat lon]}]
+  (vector lat lon))
+
+(def just-coords
+  (map coords (todays-trackpoints)))
+
+(defn less-precise
+  [coord]
+  (let [fmtstring "##.#####"]
+    (apply vector
+           (map #(-> (DecimalFormat. fmtstring)
+                     (.parse
+                      (-> (DecimalFormat. fmtstring)
+                          (.format %))))
+                coord))))
 
 
-; assoc (?) f/parse :time
 ; maybe aggregate nearby points?
 ; display with the java/clojurescripts? http://www.patrick-wied.at/static/heatmapjs/index.html
